@@ -1,13 +1,67 @@
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom'
 import '../css/LoginModal.css';
-// import GoogleLogin from 'react-google-login';
+import GoogleLogin from 'react-google-login';
 
 function LoginModal(props){ // props 라는 데이터를 상위 component(App.js)로부터 바운딩 받은 것
-  console.log(props)
   let [JoinLogin,setJoinLogin] = useState('로그인')
   const history = useHistory()
   
+  //구글 아이디로 회원가입 및 이미 회원일경우
+  let responseGoogle = (res)=>{
+    let email = res.profileObj.email
+    let id_token = res.profileObj.googleId
+
+    let data = {
+      username: email,
+      password: id_token,
+      provider: 'google'
+    }
+
+    fetch('http://localhost:8000/user/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(json => {
+      if (json.username && json.token) {
+        props.userHasAuthenticated(true, json.username, json.token);
+        props.setModal(true);
+        history.push("/");
+      }else{
+        // 서버에 Google 계정 이미 저장돼 있다면 Login 작업 수행
+        // 로그인을 시도하기 전에 서버에 접근하기 위한 access token을 발급 받음
+        fetch('http://localhost:8000/login/', {  
+        method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(json => {
+          // 발급 완료 되었다면 해당 토큰을 클라이언트 Local Storage에 저장
+          if (json.user && json.user.username && json.token) {
+            props.userHasAuthenticated(true, json.user.username, json.token);
+            props.setModal(true);
+            history.push("/");
+          }
+        })
+        .catch(error => {
+          console.log(error);
+          window.gapi && window.gapi.auth2.getAuthInstance().signOut();
+        });   
+      }
+    })
+    .catch(error => {
+      console.log(error);
+      window.gapi && window.gapi.auth2.getAuthInstance().signOut();
+    });  
+  }//구글 아이디로 회원가입 및 이미 회원일경우
+
   // 사용자가 기입하는 정보를 담으려고 우선 username, userpassword라는 state값을 생성했고
   // 이를 setState할 수 있는 함수인 setUsername과 setUserPassword라는 함수를 작성해준다.
   let [username, setUsername] = useState()
@@ -102,11 +156,12 @@ function LoginModal(props){ // props 라는 데이터를 상위 component(App.js
             }
           </form>
 
-
-          {/* <section className="social-box">
-            <h4>소셜 계정으로 {JoinLogin}</h4>
+          <section className="social-box">
+            <h4>소셜 계정으로 {JoinLoign}</h4>
             <div className="googlebox">
-                  <button>
+              <GoogleLogin
+                render={renderProps => (
+                  <button onClick={renderProps.onClick} disabled={renderProps.disabled}>
                     <svg width="20" height="20" fill="none" viewBox="0 0 20 20" className="google-login">
                       <path fill="#4285F4" d="M19.99 10.187c0-.82-.069-1.417-.216-2.037H10.2v3.698h5.62c-.113.92-.725 2.303-2.084 3.233l-.02.124 3.028 2.292.21.02c1.926-1.738 3.037-4.296 3.037-7.33z"></path>
                       <path fill="#34A853" d="M10.2 19.931c2.753 0 5.064-.886 6.753-2.414l-3.218-2.436c-.862.587-2.017.997-3.536.997a6.126 6.126 0 0 1-5.801-4.141l-.12.01-3.148 2.38-.041.112c1.677 3.256 5.122 5.492 9.11 5.492z"></path>
@@ -114,9 +169,14 @@ function LoginModal(props){ // props 라는 데이터를 상위 component(App.js
                       <path fill="#EB4335" d="M10.2 3.853c1.914 0 3.206.809 3.943 1.484l2.878-2.746C15.253.985 12.953 0 10.199 0 6.211 0 2.766 2.237 1.09 5.492l3.297 2.503A6.152 6.152 0 0 1 10.2 3.853z"></path>
                     </svg>
                   </button>
+                )}
+                buttonText=""
+                clientId="161501678517-il8gdqt5ak46nuh9r2oku23aeebg5f53.apps.googleusercontent.com"
+                onSuccess={responseGoogle}
+                onFailure={responseGoogle}
+                cookiePolicy={'single_host_origin'}/>
             </div>
-          </section> */}
-
+          </section>
 
           <div className="login-foot">
             {
