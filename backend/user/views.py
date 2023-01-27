@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .serializers import UserSerializer, UserSerializerWithToken, ProfileSerializer
 from .models import Profile
+from django.core.mail import EmailMessage
 
 # from google.oauth2 import id_token
 # from google.auth.transport import requests
@@ -34,3 +35,15 @@ class ProfileUpdateAPI(generics.UpdateAPIView):
     lookup_field = "user_pk"
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
+
+class MailView(APIView):
+    def post(self, request, format=None):
+        email = request.data['email']
+        if email is not None:
+            subject = email + '님께서 회원탈퇴 요청'
+            message = '회원탈퇴를 요청하셨습니다.'
+            mail = EmailMessage(subject, message, to=['nokla4137@naver.com'])
+            mail.send()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
